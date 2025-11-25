@@ -1,0 +1,8 @@
+streamlit
+kiteconnect
+pandas
+numpy
+sqlalchemy
+websocket-client
+requests
+pyinstaller
