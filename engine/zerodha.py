@@ -14,7 +14,10 @@ def generate_token(request_token):
 def get_ltp(kite, symbol, exchange="NSE"):
 
     symbol = symbol.replace(" ", "").upper()
-
+    
+    if symbol in ["NIFTY50", "NIFTY 50"]:
+        symbol = "NIFTY"
+        
     if ":" not in symbol:
         symbol = f"{exchange}:{symbol}"
 
@@ -23,3 +26,4 @@ def get_ltp(kite, symbol, exchange="NSE"):
         return ltp_data[symbol]["last_price"]
     except:
         raise Exception(f"Symbol not found: {symbol}")
+
