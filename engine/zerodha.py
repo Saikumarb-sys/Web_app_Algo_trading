@@ -11,19 +11,24 @@ def generate_token(request_token):
     kite.set_access_token(data["access_token"])
     return kite
 
-def get_ltp(kite, symbol, exchange="NSE"):
+INDEX_MAP = {
+    "NIFTY": "NSE:NIFTY 50",
+    "BANKNIFTY": "NSE:NIFTY BANK",
+    "FINNIFTY": "NSE:NIFTY FIN SERVICE"
+}
 
-    symbol = symbol.replace(" ", "").upper()
-    
-    if symbol in ["NIFTY50", "NIFTY 50"]:
-        symbol = "NIFTY"
-        
-    if ":" not in symbol:
-        symbol = f"{exchange}:{symbol}"
+def get_ltp(kite, symbol, exchange="NSE"):
+    symbol = symbol.strip().upper()
+
+    # Handle Index names properly
+    if symbol in INDEX_MAP:
+        tradingsymbol = INDEX_MAP[symbol]
+    else:
+        tradingsymbol = f"{exchange}:{symbol.replace(' ', '')}"
 
     try:
-        ltp_data = kite.ltp(symbol)
-        return ltp_data[symbol]["last_price"]
-    except:
-        raise Exception(f"Symbol not found: {symbol}")
+        ltp_data = kite.ltp(tradingsymbol)
+        return ltp_data[tradingsymbol]["last_price"]
+    except Exception as e:
+        raise Exception(f"Symbol not found on Zerodha: {tradingsymbol}")
 
