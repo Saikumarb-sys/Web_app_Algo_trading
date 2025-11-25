@@ -1,81 +1,69 @@
-#!/usr/bin/env python3
-"""
-main.py - lightweight launcher for the Web_App_AT project.
+import streamlit as st
+from engine.zerodha import get_login_url, generate_token, get_ltp
+from engine.strategy import iron_condor
+from engine.pnl import max_profit, max_loss
 
-Usage:
-    python main.py streamlit  # runs "streamlit run ui_streamlit/app.py" (dev)
-    python main.py tk         # runs the tkinter UI directly
-    python main.py help       # prints this help
-"""
+st.set_page_config(page_title="Zerodha Algo App", layout="wide")
 
-import sys
-import os
-import subprocess
+st.title("🚀 Zerodha Algo Trading Dashboard")
 
-# Ensure project root is on path so "engine" package is importable
-ROOT = os.path.abspath(os.path.dirname(__file__))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
+# ---------------- LOGIN ----------------
+st.subheader("1. Login to Zerodha")
 
-def run_streamlit():
-    """Run the Streamlit app using subprocess so logs appear in terminal."""
-    streamlit_path = os.path.join(ROOT, "ui_streamlit", "app.py")
-    if not os.path.exists(streamlit_path):
-        print(f"ERROR: {streamlit_path} not found.")
-        return 1
+if st.button("🔐 Login to Zerodha"):
+    login_url = get_login_url()
+    st.markdown(f'''
+        <a href="{login_url}" target="_blank">
+        👉 Click here to Login to Zerodha
+        </a>
+    ''', unsafe_allow_html=True)
 
-    # Use the same Python executable running this script to call streamlit
-    cmd = [sys.executable, "-m", "streamlit", "run", streamlit_path]
-    print("Launching Streamlit with:", " ".join(cmd))
-    # This will block until Streamlit exits; logs printed to console
-    return subprocess.call(cmd)
+st.markdown("After login, paste your **request_token** below:")
 
-def run_tk():
-    """Import and run the Tkinter app directly (useful for packaging as EXE)."""
-    tk_path = os.path.join(ROOT, "ui_tkinter", "app.py")
-    if not os.path.exists(tk_path):
-        print(f"ERROR: {tk_path} not found.")
-        return 1
+request_token = st.text_input("Request Token")
 
-    # Import the tkinter app as a module and run its main() if defined,
-    # otherwise execute the file as a script.
-    try:
-        # Preferred: treat ui_tkinter as package and import app
-        from ui_tkinter import app as tk_app_module
-        # If module defines a main() function call it, else assume running import starts it.
-        if hasattr(tk_app_module, "main"):
-            return tk_app_module.main()
-        else:
-            # If app.py runs the UI on import, then importing above already executed it.
-            return 0
-    except Exception as e:
-        # Fallback: run the file as script
-        print("Import failed, falling back to executing file as script. Error:", e)
-        return subprocess.call([sys.executable, tk_path])
+if st.button("✅ Generate Access Token"):
+    if request_token:
+        kite = generate_token(request_token)
 
-def print_help():
-    print(__doc__)
+        # Save kite object in session
+        st.session_state["kite"] = kite
 
-def main():
-    if len(sys.argv) < 2:
-        print("No command provided. Use 'help' to see usage.")
-        print_help()
-        sys.exit(1)
-
-    cmd = sys.argv[1].lower()
-    if cmd in ("help", "-h", "--help"):
-        print_help()
-        sys.exit(0)
-    elif cmd == "streamlit":
-        code = run_streamlit()
-        sys.exit(code)
-    elif cmd in ("tk", "tkinter"):
-        code = run_tk()
-        sys.exit(code)
+        st.success("✅ Access Token Generated & Session Created")
     else:
-        print(f"Unknown command: {cmd}")
-        print_help()
-        sys.exit(1)
+        st.error("Please Paste Request Token First")
 
-if __name__ == "__main__":
-    main()
+# ---------------- IF LOGGED IN ----------------
+if "kite" in st.session_state:
+
+    st.success("🟢 Connected to Zerodha")
+
+    st.subheader("2. Get Live Price (LTP)")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        symbol = st.text_input("Enter Symbol (Ex: NIFTY, TATASTEEL, RELIANCE)")
+
+    with col2:
+        exchange = st.selectbox("Select Exchange", ["NSE"])
+
+    if st.button("📈 Get LTP"):
+        try:
+            ltp = get_ltp(st.session_state["kite"], symbol, exchange)
+            st.metric(label=f"{symbol} LTP", value=ltp)
+        except Exception as e:
+            st.error(str(e))
+
+    # ---------------- STRATEGY SECTION ----------------
+    st.subheader("3. Strategy Module (Upcoming)")
+    st.info("Iron Condor + Multi-leg strategies coming soon 🚧")
+
+    if st.button("🚪 Logout / Clear Session"):
+        for key in st.session_state.keys():
+            del st.session_state[key]
+        st.success("Session Cleared")
+        st.experimental_rerun()
+
+else:
+    st.warning("Please Login to Zerodha First")
